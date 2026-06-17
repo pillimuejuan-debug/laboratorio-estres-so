@@ -1,0 +1,16 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { pool } from '@/lib/db';
+export async function POST(req: NextRequest) {
+  const { intensity = 'medium' } = await req.json();
+  const startTime = Date.now();
+  try {
+    if (intensity === 'low') { await pool.query("SELECT * FROM users WHERE id = $1", [Math.floor(Math.random() * 100000) + 1]); }
+    else if (intensity === 'medium') {
+      await pool.query("INSERT INTO logs (level, message) VALUES ('WARN', 'Academic stress trigger')");
+      await pool.query("SELECT u.username, COUNT(t.id) FROM users u LEFT JOIN transactions t ON u.id = t.user_id WHERE t.amount > 4000 GROUP BY u.username LIMIT 100");
+    } else {
+      await pool.query("SELECT u.email, AVG(t.amount) FROM users u INNER JOIN transactions t ON u.id = t.user_id CROSS JOIN (SELECT id FROM logs ORDER BY id DESC LIMIT 5) l WHERE u.username LIKE 'user_1%' GROUP BY u.email LIMIT 500");
+    }
+    return NextResponse.json({ status: 'success', type: 'Database', duration: Date.now() - startTime });
+  } catch (error: any) { return NextResponse.json({ status: 'error', message: error.message }, { status: 500 }); }
+}

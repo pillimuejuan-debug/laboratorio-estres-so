@@ -1,0 +1,38 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: stress-postgres
+    environment:
+      POSTGRES_USER: stress_user
+      POSTGRES_PASSWORD: stress_password
+      POSTGRES_DB: stress_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/10-init.sql
+      - ./scripts/seed.sql:/docker-entrypoint-initdb.d/20-seed.sql
+    shm_size: '512mb'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stress_user -d stress_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stress-nextjs
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://stress_user:stress_password@postgres:5432/stress_db
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+volumes:
+  pgdata:
+    driver: local
